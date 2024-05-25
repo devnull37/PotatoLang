@@ -1,0 +1,9 @@
+﻿print to terminal --> print("hello world")
+vars              --> new var [name] = [value]
+loop until break  --> loop until break -> loop do:{[actions]quit_loop}
+while loop        --> while x = true do:{}
+math operators: + --> new var x = y+z
+math operators: - --> new var x = y-z
+math operators: * --> new var x = y*z
+math operators: / --> new var x = y/z
+math operators: % --> new var x = y%z
