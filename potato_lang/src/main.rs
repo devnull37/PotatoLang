@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::process::Command;
 
 #[derive(Debug)]
@@ -14,48 +14,48 @@ enum Token {
 fn lex(input: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
     let lines: Vec<&str> = input.lines().collect();
-    for line in lines {
-        println!("Line: {}", line); // Print line for debugging
+    let mut i = 0;
+    while i < lines.len() {
+        let line = lines[i].trim();
+        println!("Line: {}", line); // Debug print line
         let parts: Vec<&str> = line.split_whitespace().collect();
-        println!("Parts: {:?}", parts); // Print parts for debugging
+        println!("Parts: {:?}", parts); // Debug print parts
         match parts[0] {
             "print" => {
-                if line.contains("\"") {
-                    tokens.push(Token::Print(line[7..line.len()-2].trim().to_string())); // Extract text inside quotes
+                if parts.len() > 1 {
+                    // Handle strings with multiple words (similar to before)
+                    let mut text = String::new();
+                    for word in parts.iter().skip(1) {
+                        text.push_str(word);
+                        text.push_str(" ");
+                    }
+                    text.pop(); // Remove trailing space
+                    tokens.push(Token::Print(text.trim().to_string()));
                 } else {
-                    tokens.push(Token::Print(parts[1..].join(" "))); // Treat as variable name
+                    // Treat as variable name
+                    tokens.push(Token::Print(parts[1].to_string()));
                 }
             }
-            
             "new" => {
                 if parts[1] == "var" {
-                    tokens.push(Token::Var(parts[2].to_string(), parts[4].to_string()));
-                } else {
-                    let mut loop_actions = Vec::new();
-                    let mut i = 3;
-                    while parts[i] != "quit_loop" {
-                        loop_actions.push(parts[i].to_string());
-                        i += 1;
+                    // Extract string value without extra space and equal sign
+                    let mut value = String::new();
+                    for word in parts.iter().skip(3) {
+                        value.push_str(word);
+                        value.push_str(" ");
                     }
-                    tokens.push(Token::Loop(loop_actions));
+                    value.pop(); // Remove trailing space
+                    tokens.push(Token::Var(parts[2].to_string(), value.trim().to_string()));
                 }
-            }
-            "while" => {
-                let condition = format!("{} {} {}", parts[1], parts[2], parts[4]);
-                tokens.push(Token::While(condition));
-            }
-            "+" | "-" | "*" | "/" | "%" => {
-                let operation = parts[0].to_string();
-                let result_var = parts[2].to_string();
-                let left_var = parts[4].to_string();
-                let right_var = parts[6].to_string();
-                tokens.push(Token::Math(operation, result_var, left_var, right_var));
             }
             _ => {}
         }
+        i += 1;
     }
     tokens
 }
+
+
 
 fn transpile(tokens: &[Token]) -> String {
     let mut code = String::new();
@@ -63,42 +63,44 @@ fn transpile(tokens: &[Token]) -> String {
     for token in tokens {
         match token {
             Token::Print(text) => {
+                println!("Processing Token::Print: {}", text); // Debug print
                 if text.starts_with("\"") && text.ends_with("\"") {
-                    code.push_str(&format!("    println!({});\n", text));
+                    // If it's a string literal, print it as is
+                    code.push_str(&format!("  println!({});\n", text));
                 } else {
-                    code.push_str(&format!("    println!(\"{{}}\", {});\n", text)); // Print variable without quotes and curly braces
+                    // If it's a variable, print its value
+                    code.push_str(&format!("  println!(\"{{}}\", {});\n", text));
                 }
             }
             Token::Var(name, value) => {
-                code.push_str(&format!("    let {} = {};\n", name, value));
+                println!("Processing Token::Var: name = {}, value = {}", name, value); // Debug print
+                code.push_str(&format!("  let {}  {};\n", name, value));
             }
             Token::Loop(actions) => {
-                code.push_str("    loop {\n");
+                code.push_str("  loop {\n");
                 for action in actions {
-                    code.push_str(&format!("        {}\n", action));
+                    code.push_str(&format!("    {}\n", action));
                 }
-                code.push_str("        break;\n    }\n");
+                code.push_str("    break;\n  }\n");
             }
-
-            Token::Print(text) => {
-                code.push_str(&format!("    println!(\"{}\");\n", text));
-            }
-        
             Token::While(condition) => {
-                code.push_str(&format!("    while {} {{}}\n", condition));
+                code.push_str(&format!("  while {} {{}}\n", condition));
             }
             Token::Math(op, result_var, left_var, right_var) => {
-                code.push_str(&format!("    let {} = {} {} {};\n", result_var, left_var, op, right_var));
+                code.push_str(&format!("  let {} = {} {} {};\n", result_var, left_var, op, right_var));
             }
-            _ => {} // Add a default case to catch any unexpected tokens
+            _ => println!("Encountered unexpected token type"), // Debug print
         }
     }
     code.push_str("}\n");
     code
 }
 
+
+
+
 fn main() {
-    println!("Enter your Potatolang code (end with an empty line):");
+    println!("Enter your PotatoLang code (end with an empty line):");
     let mut input = String::new();
     loop {
         let mut line = String::new();
