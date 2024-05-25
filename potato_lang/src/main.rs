@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::io::{self, Write};
 use std::process::Command;
+use std::env::args;
+use std::fs::read_to_string;
+
 
 #[derive(Debug)]
 enum Token {
@@ -97,19 +100,21 @@ fn transpile(tokens: &[Token]) -> String {
 }
 
 
+fn create_new_file() {
+    let mut file = File::create("main.ptl").expect("Failed to create file");
+    file.write_all(b"print \"Hello, Potato!\"\n").expect("Failed to write to file");
+    println!("Created new Potatolang file: main.ptl");
+}
 
+fn compile_file() {
+    let mut args = args().skip(1);
+    let file_path = args.next().unwrap_or_else(|| String::from("main.ptl"));
 
-fn main() {
-    println!("Enter your PotatoLang code (end with an empty line):");
-    let mut input = String::new();
-    loop {
-        let mut line = String::new();
-        io::stdin().read_line(&mut line).expect("Failed to read line");
-        if line.trim().is_empty() {
-            break;
-        }
-        input.push_str(&line);
-    }
+    // Read file contents
+    let input = match read_to_string(file_path) {
+        Ok(content) => content,
+        Err(err) => panic!("Failed to read file: {}", err),
+    };
 
     let tokens = lex(&input);
     println!("Tokens: {:?}", tokens);
@@ -135,4 +140,30 @@ fn main() {
         .output()
         .expect("Failed to run Rust code");
     println!("Execution output: {}", String::from_utf8_lossy(&output.stdout));
+}
+
+const VERSION: &str = "0.1.0"; // Update with your actual version
+
+fn main() {
+    println!("Potatolang Compiler v{}", VERSION);
+    println!("1. New Potatolang File (Hello World)");
+    println!("2. Compile Potatolang File");
+    println!("3. Settings"); // Placeholder for future settings
+    println!("4. Exit");
+
+    loop {
+        println!("Enter your choice: ");
+        let mut choice = String::new();
+        io::stdin().read_line(&mut choice).expect("Failed to read input");
+        let choice = choice.trim().parse::<u8>();
+
+        match choice {
+            Ok(1) => create_new_file(),
+            Ok(2) => compile_file(),
+            Ok(3) => println!("Settings not yet implemented"), // Placeholder
+            Ok(4) => break,
+            Err(_) => println!("Invalid choice. Please enter a number between 1 and 4."),
+            _ => unreachable!(), // Should not happen
+        }
+    }
 }

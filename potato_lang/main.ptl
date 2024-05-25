@@ -1,0 +1,4 @@
+new var x = 1
+new var y = 2
+new var z = x+y
+print z
