@@ -9,9 +9,8 @@ use std::fs::read_to_string;
 enum Token {
     Print(String),
     Var(String, String),
-    Loop(Vec<String>),
     While(String),
-    Math(String, String, String, String),
+    Input(String),
 }
 
 fn lex(input: &str) -> Vec<Token> {
@@ -51,6 +50,14 @@ fn lex(input: &str) -> Vec<Token> {
                     tokens.push(Token::Var(parts[2].to_string(), value.trim().to_string()));
                 }
             }
+
+            "in" => {
+                if parts.len() >= 3 && (parts[1] == "console" || parts[1] == "con") {
+                    tokens.push(Token::Input(parts[2].to_string()));
+                } else {
+                    println!("Invalid input command syntax. Use 'in console <your_variable_name>'");
+                }
+            }
             _ => {}
         }
         i += 1;
@@ -79,19 +86,26 @@ fn transpile(tokens: &[Token]) -> String {
                 println!("Processing Token::Var: name = {}, value = {}", name, value); // Debug print
                 code.push_str(&format!("  let {}  {};\n", name, value));
             }
-            Token::Loop(actions) => {
-                code.push_str("  loop {\n");
-                for action in actions {
-                    code.push_str(&format!("    {}\n", action));
-                }
-                code.push_str("    break;\n  }\n");
-            }
+            // Token::Loop(actions) => {
+            //     println!("Processing Token::Loop: actions = {:?}", actions); // Debug print
+            //     code.push_str("  loop {\n"); // Loop structure with indentation
+            //     for action in actions {
+            //       code.push_str(&format!("    {}\n", action));
+            //     }
+            // }
+            // code.push_str("  }\n");
+            
             Token::While(condition) => {
-                code.push_str(&format!("  while {} {{}}\n", condition));
+                println!("While condition: {}", condition); // Debug print
+                code.push_str(&format!("  while {} {{}}\n", condition));
+              }
+            Token::Input(var_name) => {
+                code.push_str(&format!("use std::io;\n"));
+                code.push_str(&format!("let mut {} = String::new();\n", var_name));
+                code.push_str("println!(\"{symbol} \");");
+                code.push_str(&format!("io::stdin().read_line(&mut {});\n", var_name));
             }
-            Token::Math(op, result_var, left_var, right_var) => {
-                code.push_str(&format!("  let {} = {} {} {};\n", result_var, left_var, op, right_var));
-            }
+            
             _ => println!("Encountered unexpected token type"), // Debug print
         }
     }
@@ -112,9 +126,9 @@ fn compile_file() {
 
     // Read file contents
     let input = match read_to_string(file_path) {
-        Ok(content) => content,
-        Err(err) => panic!("Failed to read file: {}", err),
-    };
+    Ok(content) => content,
+    Err(err) => panic!("Failed to read file: {}", err),
+};
 
     let tokens = lex(&input);
     println!("Tokens: {:?}", tokens);

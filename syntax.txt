@@ -7,3 +7,4 @@ math operators: - --> new var x = y-z
 math operators: * --> new var x = y*z
 math operators: / --> new var x = y/z
 math operators: % --> new var x = y%z
+input             --> in con [var to store the input to] {not, instead of in con, you can use in console}
