@@ -4,13 +4,15 @@ use std::process::Command;
 use std::env::args;
 use std::fs::read_to_string;
 
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Token {
     Print(String),
     Var(String, String),
-    While(String),
-    Input(String),
+    Loop(Vec<Token>),
+    While(String, Vec<Token>),
+    Input(String, String),
+    If(String, Vec<Token>),  // Added If variant
+    QuitLoop,
 }
 
 fn lex(input: &str) -> Vec<Token> {
@@ -19,44 +21,64 @@ fn lex(input: &str) -> Vec<Token> {
     let mut i = 0;
     while i < lines.len() {
         let line = lines[i].trim();
-        println!("Line: {}", line); // Debug print line
         let parts: Vec<&str> = line.split_whitespace().collect();
-        println!("Parts: {:?}", parts); // Debug print parts
         match parts[0] {
             "print" => {
-                if parts.len() > 1 {
-                    // Handle strings with multiple words (similar to before)
-                    let mut text = String::new();
-                    for word in parts.iter().skip(1) {
-                        text.push_str(word);
-                        text.push_str(" ");
-                    }
-                    text.pop(); // Remove trailing space
-                    tokens.push(Token::Print(text.trim().to_string()));
-                } else {
-                    // Treat as variable name
-                    tokens.push(Token::Print(parts[1].to_string()));
-                }
+                let text = parts[1..].join(" ");
+                tokens.push(Token::Print(text));
             }
             "new" => {
                 if parts[1] == "var" {
-                    // Extract string value without extra space and equal sign
-                    let mut value = String::new();
-                    for word in parts.iter().skip(3) {
-                        value.push_str(word);
-                        value.push_str(" ");
-                    }
-                    value.pop(); // Remove trailing space
-                    tokens.push(Token::Var(parts[2].to_string(), value.trim().to_string()));
+                    let name = parts[2].to_string();
+                    let value = parts[4..].join(" ");
+                    tokens.push(Token::Var(name, value));
                 }
             }
-
             "in" => {
-                if parts.len() >= 3 && (parts[1] == "console" || parts[1] == "con") {
-                    tokens.push(Token::Input(parts[2].to_string()));
+                if parts.len() >= 4 && (parts[1] == "console" || parts[1] == "con") {
+                    let var_name = parts[2].to_string();
+                    let var_type = parts[3].to_string(); // Expecting type as the fourth part
+                    tokens.push(Token::Input(var_name, var_type));
                 } else {
-                    println!("Invalid input command syntax. Use 'in console <your_variable_name>'");
+                    println!("Invalid input command syntax. Use 'in console <your_variable_name> <type>'");
                 }
+            }
+            "loop" => {
+                if parts[1] == "until" && parts[2] == "break" {
+                    i += 1;
+                    let mut loop_body = Vec::new();
+                    while i < lines.len() && lines[i].trim() != "quit_loop" {
+                        loop_body.push(lines[i].to_string());
+                        i += 1;
+                    }
+                    let loop_tokens = lex(&loop_body.join("\n"));
+                    tokens.push(Token::Loop(loop_tokens));
+                }
+            }
+            "while" => {
+                let condition = parts[1..].join(" ");
+                i += 1;
+                let mut loop_body = Vec::new();
+                while i < lines.len() && lines[i].trim() != "}" {
+                    loop_body.push(lines[i].to_string());
+                    i += 1;
+                }
+                let loop_tokens = lex(&loop_body.join("\n"));
+                tokens.push(Token::While(condition.trim().to_string(), loop_tokens));
+            }
+            "if" => {
+                let condition = parts[1..].join(" ");
+                i += 1;
+                let mut if_body = Vec::new();
+                while i < lines.len() && lines[i].trim() != "}" {
+                    if_body.push(lines[i].to_string());
+                    i += 1;
+                }
+                let if_tokens = lex(&if_body.join("\n"));
+                tokens.push(Token::If(condition.trim().to_string(), if_tokens));
+            }
+            "quit_loop" => {
+                tokens.push(Token::QuitLoop);
             }
             _ => {}
         }
@@ -65,58 +87,63 @@ fn lex(input: &str) -> Vec<Token> {
     tokens
 }
 
-
-
 fn transpile(tokens: &[Token]) -> String {
     let mut code = String::new();
     code.push_str("fn main() {\n");
     for token in tokens {
         match token {
             Token::Print(text) => {
-                println!("Processing Token::Print: {}", text); // Debug print
                 if text.starts_with("\"") && text.ends_with("\"") {
-                    // If it's a string literal, print it as is
                     code.push_str(&format!("  println!({});\n", text));
                 } else {
-                    // If it's a variable, print its value
                     code.push_str(&format!("  println!(\"{{}}\", {});\n", text));
                 }
             }
             Token::Var(name, value) => {
-                println!("Processing Token::Var: name = {}, value = {}", name, value); // Debug print
-                code.push_str(&format!("  let {}  {};\n", name, value));
+                code.push_str(&format!("  let {} = {};\n", name, value));
             }
-            // Token::Loop(actions) => {
-            //     println!("Processing Token::Loop: actions = {:?}", actions); // Debug print
-            //     code.push_str("  loop {\n"); // Loop structure with indentation
-            //     for action in actions {
-            //       code.push_str(&format!("    {}\n", action));
-            //     }
-            // }
-            // code.push_str("  }\n");
-            
-            Token::While(condition) => {
-                println!("While condition: {}", condition); // Debug print
-                code.push_str(&format!("  while {} {{}}\n", condition));
-              }
-            Token::Input(var_name) => {
-                code.push_str(&format!("use std::io;\n"));
-                code.push_str(&format!("let mut {} = String::new();\n", var_name));
-                code.push_str("println!(\"{symbol} \");");
-                code.push_str(&format!("io::stdin().read_line(&mut {});\n", var_name));
+            Token::Loop(body) => {
+                code.push_str("  loop {\n");
+                for body_token in body {
+                    code.push_str(&transpile(&[body_token.clone()]));
+                }
+                code.push_str("  }\n");
             }
-            
-            _ => println!("Encountered unexpected token type"), // Debug print
+            Token::While(condition, body) => {
+                code.push_str(&format!("  while {} {{\n", condition));
+                for body_token in body {
+                    code.push_str(&transpile(&[body_token.clone()]));
+                }
+                code.push_str("  }\n");
+            }
+            Token::If(condition, body) => {
+                code.push_str(&format!("  if {} {{\n", condition));
+                for body_token in body {
+                    code.push_str(&transpile(&[body_token.clone()]));
+                }
+                code.push_str("  }\n");
+            }
+            Token::Input(var_name, var_type) => {
+                code.push_str("  use std::io;\n");
+                code.push_str(&format!("  let mut {} = String::new();\n", var_name));
+                code.push_str("  println!(\"Enter input: \");\n");
+                code.push_str(&format!("  io::stdin().read_line(&mut {}).expect(\"Failed to read line\");\n", var_name));
+                if var_type == "int" {
+                    code.push_str(&format!("  let {}: i32 = {}.trim().parse().expect(\"Please type a number!\");\n", var_name, var_name));
+                }
+            }
+            Token::QuitLoop => {
+                code.push_str("  break;\n");
+            }
         }
     }
     code.push_str("}\n");
     code
 }
 
-
 fn create_new_file() {
     let mut file = File::create("main.ptl").expect("Failed to create file");
-    file.write_all(b"print \"Hello, Potato!\"\n").expect("Failed to write to file");
+    file.write_all(b"new var x = 0\nin console x int\nprint x\n").expect("Failed to write to file");
     println!("Created new Potatolang file: main.ptl");
 }
 
@@ -124,17 +151,13 @@ fn compile_file() {
     let mut args = args().skip(1);
     let file_path = args.next().unwrap_or_else(|| String::from("main.ptl"));
 
-    // Read file contents
     let input = match read_to_string(file_path) {
-    Ok(content) => content,
-    Err(err) => panic!("Failed to read file: {}", err),
-};
+        Ok(content) => content,
+        Err(err) => panic!("Failed to read file: {}", err),
+    };
 
     let tokens = lex(&input);
-    println!("Tokens: {:?}", tokens);
-
     let rust_code = transpile(&tokens);
-    println!("Rust code: {}", rust_code);
 
     let mut rust_file = File::create("output.rs").expect("Cannot create file");
     rust_file.write_all(rust_code.as_bytes()).expect("Cannot write to file");
@@ -156,13 +179,13 @@ fn compile_file() {
     println!("Execution output: {}", String::from_utf8_lossy(&output.stdout));
 }
 
-const VERSION: &str = "0.1.0"; // Update with your actual version
+const VERSION: &str = "0.1.0";
 
 fn main() {
     println!("Potatolang Compiler v{}", VERSION);
     println!("1. New Potatolang File (Hello World)");
     println!("2. Compile Potatolang File");
-    println!("3. Settings"); // Placeholder for future settings
+    println!("3. Settings");
     println!("4. Exit");
 
     loop {
@@ -174,10 +197,10 @@ fn main() {
         match choice {
             Ok(1) => create_new_file(),
             Ok(2) => compile_file(),
-            Ok(3) => println!("Settings not yet implemented"), // Placeholder
+            Ok(3) => println!("Settings not yet implemented"),
             Ok(4) => break,
             Err(_) => println!("Invalid choice. Please enter a number between 1 and 4."),
-            _ => unreachable!(), // Should not happen
+            _ => unreachable!(),
         }
     }
 }

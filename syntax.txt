@@ -1,10 +1,9 @@
-﻿print to terminal --> print("hello world")
+﻿print to terminal --> print "hello world"
 vars              --> new var [name] = [value]
-loop until break  --> loop until break -> loop do:{[actions]quit_loop}
-while loop        --> while x = true do:{}
 math operators: + --> new var x = y+z
 math operators: - --> new var x = y-z
 math operators: * --> new var x = y*z
 math operators: / --> new var x = y/z
 math operators: % --> new var x = y%z
-input             --> in con [var to store the input to] {not, instead of in con, you can use in console}
+input             --> in con [var to store the input to] [type(int , or str)] {not, instead of in con, you can use in console}
+
