@@ -1,0 +1,1 @@
+PotatoLang is a transpiled language that transpiles to Rust, and is built in Rust. PotatoLang was just built for fun, and to learn, you look at the syntax in the `syntax.txt` file. Feel free to make a new branch and suggest some edits. Any help is appreciated.
