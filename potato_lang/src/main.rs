@@ -44,7 +44,7 @@ fn lex(input: &str) -> Vec<Token> {
                 }
             }
             "loop" => {
-                if parts[1] == "until" && parts[2] == "break" {
+                if parts[1] == "do" {
                     i += 1;
                     let mut loop_body = Vec::new();
                     while i < lines.len() && lines[i].trim() != "quit_loop" {
@@ -143,7 +143,7 @@ fn transpile(tokens: &[Token]) -> String {
 
 fn create_new_file() {
     let mut file = File::create("main.ptl").expect("Failed to create file");
-    file.write_all(b"new var x = 0\nin console x int\nprint x\n").expect("Failed to write to file");
+    file.write_all(br#"print "Hello, World""#).expect("Failed to write to file");
     println!("Created new Potatolang file: main.ptl");
 }
 
