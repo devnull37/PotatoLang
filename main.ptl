@@ -1,0 +1,4 @@
+new var input = "h"
+in con input str
+print "you said:"
+print input
