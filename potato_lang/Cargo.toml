@@ -1,7 +1,6 @@
 [package]
-name = "potato_lang"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-
+name = "potatolang"
+version = "0.2.0"  # Matches your VERSION constant
+edition = "2021"   # Use the 2021 edition of Rust (or whichever you prefer)
+authors = ["Faris Al-Lafi"]  # Add your name or handle!
+description = "A custom programming language"

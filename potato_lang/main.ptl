@@ -1,0 +1,12 @@
+new var a = 10
+new var b = 5
+new var sum = a + b
+new var diff = a - b
+new var prod = a * b
+new var div = a / b
+new var mod = a % b
+print to terminal sum
+print to terminal diff
+print to terminal prod
+print to terminal div
+print to terminal mod
